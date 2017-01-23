@@ -200,8 +200,10 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         boolean isFirstTable = true;
         int filterLength = 0;
         for (ETLSourceTable sourceTable : sourceTableList) {
+            StringBuilder bufForTable = new StringBuilder();
+
             if (!isFirstTable)
-                buffer.append("\nAND");
+                bufForTable.append("\nAND");
 
             int groupIdx = 0;
             for (ETLLoadGroup group : loadGroup.getLoadBatch().getLoadGroupList()) {
@@ -210,14 +212,17 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
                 groupIdx++;
             }
 
-            String[] fileterConditions = sourceTable.getFilterCondition().split(";");
-            if (groupIdx > fileterConditions.length - 1)
-                groupIdx = fileterConditions.length - 1;
+            String[] filterConditions = sourceTable.getFilterCondition().split(";");
+            if (groupIdx > filterConditions.length - 1)
+                groupIdx = filterConditions.length - 1;
 
-            buffer.append(" ").append("(").append(fileterConditions[groupIdx]).append(")");
+            bufForTable.append(" ").append("(").append(filterConditions[groupIdx].trim()).append(")");
             isFirstTable = false;
 
-            filterLength += sourceTable.getFilterCondition().trim().length();
+            filterLength += filterConditions[groupIdx].trim().length();
+
+            if (filterConditions[groupIdx].trim().length() > 0)
+                buffer.append(bufForTable);
         }
 
         if (filterLength > 0)
