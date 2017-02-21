@@ -3,6 +3,8 @@ package io.jacob.etlman.job.sql.hive;
 import io.jacob.etlman.job.sql.JobSQLGenerator;
 import io.jacob.etlman.job.sql.JobSQLGeneratorConfig;
 import io.jacob.etlman.metastore.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,6 +17,7 @@ import static java.lang.System.exit;
  */
 public class HiveJobSQLGenerator extends JobSQLGenerator {
 
+    private static Logger logger = LoggerFactory.getLogger(HiveJobSQLGenerator.class);
     private String workingTable;
     private int numGroupBlock;
 
@@ -135,14 +138,14 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
             ETLColumnMapping mapping = getMapping(loadGroup, column);
             if (mapping == null){
                 buffer.delete(0, buffer.length());
-                buffer.append("\n-- Fatal Error, mapping not found for group: " + loadGroup.getLoadGroup() +
+                logger.error("Mapping not found for batch: " + loadGroup.getLoadBatch().getLoadBatch() + ", group: " + loadGroup.getLoadGroup() +
                         ", column: " + column.getColumnName() + " !");
-                return buffer.toString();
+                exit(-1);
             }
 
             if ((mapping.getExpression() == null || mapping.getExpression().trim().length() == 0)
                 && mapping.getSrcColumnList().get(0).getColumnName().equals("")){
-                System.out.println(String.format("Entity: %s, Batch: %d, Group: %d, Expression for Mapping [%s] <- [%s] is not specified.",
+                logger.error(String.format("Entity: %s, batch: %d, group: %d, expression for mapping [%s] <- [%s] is not specified.",
                         etlTask.getEtlEntity().getEntityName(), loadGroup.getLoadBatch().getLoadBatch(), loadGroup.getLoadGroup(),
                         mapping.getEntityAttribute().getColumnName(), mapping.getSrcColumnList().get(0).getColumnName()));
                 exit(-1);
@@ -328,8 +331,10 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
                 break;
             }
 
-        if (defaultGroup == null)
-            throw new Exception("Default load group was not found!");
+        if (defaultGroup == null) {
+            logger.error("Default load group was not found!");
+            exit(-1);
+        }
 
         for (ETLColumnMapping mapping : defaultGroup.getColumnMappings())
             if (mapping.getEntityAttribute().getColumnName().equals(attribute.getColumnName()))

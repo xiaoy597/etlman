@@ -180,12 +180,12 @@ echo
 java -classpath "./etlman-1.0-SNAPSHOT.jar:$DEPS" io.jacob.etlman.ETLMan $TABLE_NAME $OUTPUT_FILE 1>${LOG_FILE} 2>&1
 
 
-grep Excep ${LOG_FILE} > /dev/null
+cat ${LOG_FILE}|grep -i '\(error\|except\)'
 if [ $? -eq 1 ]; then
 	echo "Program finished successfully."
 	exit 0
 else
-	echo "ProgramJob failed with exception, please check ${LOG_FILE} for more details."
+	echo "ProgramJob failed with error/exception, please check ${LOG_FILE} for more details."
 	exit -1
 fi
 
