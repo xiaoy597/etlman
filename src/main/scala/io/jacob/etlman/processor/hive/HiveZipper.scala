@@ -22,8 +22,8 @@ class HiveZipper(val sparkContext : SparkContext,
   val partitionColumnList : List[DWColumn] = columnList.filter(_.isPartitionKey == true)
 
   def zip() : Unit = {
-    val querySql = "select * from %s where %s >= '%s' and %s <= '%s'".format(
-      tableName, ZipperConfig.loadDateColName, ZipperConfig.zipStartDt, ZipperConfig.loadDateColName, ZipperConfig.zipEndDt)
+    val querySql = "select * from %s.%s where %s >= '%s' and %s <= '%s'".format(
+      ZipperConfig.schemaName, tableName, ZipperConfig.loadDateColName, ZipperConfig.zipStartDt, ZipperConfig.loadDateColName, ZipperConfig.zipEndDt)
 
     val tableDF = HiveUtils.getDataFromHive(querySql , sparkContext, ZipperConfig.partitionNum)
 
@@ -42,17 +42,18 @@ class HiveZipper(val sparkContext : SparkContext,
       var zippedRows = List[ZippedRow]()
       for (row <- rows){
         if (zippedRows.isEmpty){
-          val zippedRow = ZippedRow(row, row.getAs[String](loadDateColName), defaultEndDate)
+          val zippedRow = ZippedRow(row, row.getAs[String](loadDateColName), row.getAs[String](loadDateColName))
           zippedRows = zippedRow :: zippedRows
         }else{
           if (zippedRows.head.canZip(row, compareColumnListBroadcast.value)){
             zippedRows.head.end_dt = row.getAs[String](loadDateColName)
           }else{
-            val zippedRow = ZippedRow(row, row.getAs[String](loadDateColName), defaultEndDate)
+            val zippedRow = ZippedRow(row, row.getAs[String](loadDateColName), row.getAs[String](loadDateColName))
             zippedRows = zippedRow :: zippedRows
           }
         }
       }
+      zippedRows.head.end_dt = defaultEndDate
       zippedRows
     })
 
@@ -97,7 +98,7 @@ class HiveZipper(val sparkContext : SparkContext,
 
     zDF.registerTempTable(tempTableName)
 
-    HiveUtils.saveDatatoHive(sparkContext, tempTableName, tableName + "_his",
+    HiveUtils.saveDatatoHive(sparkContext, tempTableName, ZipperConfig.zipDBName + "." + tableName + "_his",
       ZipperConfig.loadMonColName, ZipperConfig.loadMonth, partitionColumnList)
   }
 }

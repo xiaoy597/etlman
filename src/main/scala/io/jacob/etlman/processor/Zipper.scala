@@ -34,6 +34,7 @@ object Zipper {
     ZipperConfig.zipStartDt = args(4)
     ZipperConfig.zipEndDt = args(5)
     ZipperConfig.defaultEndDate = args(6)
+    ZipperConfig.zipDBName = args(7)
 
     println(ZipperConfig)
 

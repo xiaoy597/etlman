@@ -23,7 +23,7 @@ object HiveUtils {
 
     sqlContext.sql("use pdata")
 
-    val dataFrame = sqlContext.sql(sqlStmt).coalesce(numPartitions).cache()
+    val dataFrame = sqlContext.sql(sqlStmt).repartition(numPartitions)
 
     if (ZipperConfig.isDebug) {
       println("Sample result of the SQL [%s]:".format(sqlStmt))
@@ -45,10 +45,14 @@ object HiveUtils {
     // snapshot table column list.
     val sql = "insert overwrite table " + destTableName +
       " partition(" + monPartColName + " = '" + monPartValue + "' " +
-      (otherPartColumns.map(_.phyName).reduce(_ + ", " + _) match {
-        case "" => ""
-        case x => ", " + x
-      }) + ") " +
+      (if (otherPartColumns.isEmpty)
+        ""
+      else
+        otherPartColumns.map(_.phyName).reduce(_ + ", " + _) match {
+          case "" => ""
+          case x => ", " + x
+        }
+        ) + ") " +
       "select * from " + srcTableName
 
     println(sql)
