@@ -21,8 +21,6 @@ object HiveUtils {
       sqlContext = new HiveContext(sc)
     }
 
-    sqlContext.sql("use pdata")
-
     val dataFrame = sqlContext.sql(sqlStmt).repartition(numPartitions)
 
     if (ZipperConfig.isDebug) {
