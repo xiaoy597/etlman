@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS col_value_histogram;
 CREATE TABLE col_value_histogram
 (
-	value_histogram_id   VARCHAR(20) NOT NULL COMMENT '值域分布ID',
+	value_histogram_id   VARCHAR(128) NOT NULL COMMENT '值域分布ID',
 	mode_value           VARCHAR(128) NOT NULL COMMENT '特征值',
 	mode_value_freq     INTEGER NOT NULL COMMENT '特征值出现频率'
 ) COMMENT '字段值域分布表';
@@ -21,7 +21,7 @@ CREATE TABLE column_stats
 	min_value            VARCHAR(128) NULL COMMENT '最小值',
 	value_count          INTEGER NULL COMMENT '唯一值数目',
 	null_count           INTEGER NULL COMMENT '空值数目',
-	value_histogram_id   VARCHAR(20) NULL COMMENT '值域分布ID'
+	value_histogram_id   VARCHAR(128) NULL COMMENT '值域分布ID'
 ) COMMENT '字段统计信息表';
 
 ALTER TABLE column_stats
