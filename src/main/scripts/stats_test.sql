@@ -12,6 +12,7 @@ create table sdata.stats_test
 	ts_col		timestamp,
 	bool_col	boolean
 )
+partitioned by (data_dt_iso string)
 row format delimited
 fields terminated by '\t'
 lines terminated by '\n'

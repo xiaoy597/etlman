@@ -4,7 +4,7 @@ import java.sql.Connection
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import io.jacob.etlman.utils.{HiveUtils, JDBCUtils}
+import io.jacob.etlman.utils.HiveUtils
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
@@ -16,13 +16,15 @@ class HiveStatsCollector(val sparkContext: SparkContext,
                          val sysName: String,
                          val schemaName: String,
                          val tableName: String,
+                         val loadDate: String,
                          val metaDBConnection: Connection
                         ) {
 
   def collect(): Unit = {
     val timeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())
 
-    val queryStmt = "select * from %s.%s".format(schemaName, tableName)
+    val queryStmt = "select * from %s.%s %s"
+      .format(schemaName, tableName, if (loadDate == null) "" else " where data_dt_iso = '" + loadDate + "'")
 
     val tableDF = HiveUtils.getDataFromHive(queryStmt, sparkContext, 10)
 
@@ -31,7 +33,7 @@ class HiveStatsCollector(val sparkContext: SparkContext,
 
     saveTableStats(rowCount, timeStamp)
 
-    tableDF.schema.fields.foreach(c => {
+    tableDF.schema.fields.filter(!_.name.equalsIgnoreCase("data_dt_iso")).foreach(c => {
       println("Collecting stats for %s ...".format(c.name))
 
       val aggDF = tableDF.agg(count(c.name), min(c.name), max(c.name))
@@ -95,10 +97,10 @@ class HiveStatsCollector(val sparkContext: SparkContext,
     ps = metaDBConnection.prepareStatement(sqlInsertHistogram)
 
     stats.sort(desc("count")).take(200).foreach(x => {
-          println(x)
-          ps.setString(1, x.get(0).toString)
-          ps.setLong(2, x.getLong(1))
-          ps.executeUpdate()
-        })
+      println(x)
+      ps.setString(1, x.get(0).toString)
+      ps.setLong(2, x.getLong(1))
+      ps.executeUpdate()
+    })
   }
 }

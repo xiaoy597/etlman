@@ -22,6 +22,7 @@ object StatsCollector {
 
     val schemaName = args(1)
     val tableName = if (args.length > 2) args(2) else null
+    val loadDate = if (args.length > 3) args(3) else null
 
     val props = new Properties()
 
@@ -34,14 +35,14 @@ object StatsCollector {
 
     val sparkContext = new SparkContext(sparkConf)
 
-    if (tableName == null) {
+    if (tableName == null || tableName == "-") {
       val tableList = HiveUtils.getDataFromHive("show tables in sdata", sparkContext, 1).collect()
 
       tableList.foreach(t => {
-        new HiveStatsCollector(sparkContext, "src_sys", schemaName, t.getString(0), metaDBConnection).collect()
+        new HiveStatsCollector(sparkContext, "src_sys", schemaName, t.getString(0), loadDate, metaDBConnection).collect()
       })
     }else
-      new HiveStatsCollector(sparkContext, "src_sys", schemaName, tableName, metaDBConnection).collect()
+      new HiveStatsCollector(sparkContext, "src_sys", schemaName, tableName, loadDate, metaDBConnection).collect()
 
     sparkContext.stop()
 
