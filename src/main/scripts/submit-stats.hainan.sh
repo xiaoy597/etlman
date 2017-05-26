@@ -4,13 +4,13 @@ SCHEMA_NAME=$1
 TABLE_NAME=$2
 LOAD_DATE=$3
 
-export ETL_METADB_SERVER=host1:3306
-export ETL_METADB_DBNAME=etl_metadata
-export ETL_METADB_USER=etl
-export ETL_METADB_PASSWORD=etl
+export ETL_METADB_SERVER=HOSTNAME:PORT
+export ETL_METADB_DBNAME=DBNAME
+export ETL_METADB_USER=USER
+export ETL_METADB_PASSWORD=PASSWORD
 
 export ETL_STATS_DEBUG=true
-export ETL_STATS_PARTITION=10
+export ETL_STATS_PARTITION=1024
 
 DEPS="\
 ./lib/akka-actor_2.10-2.3.11.jar,\
@@ -180,10 +180,10 @@ echo
 spark-submit \
 	--class io.jacob.etlman.processor.StatsCollector \
 	--master yarn \
-	--num-executors 2 \
-	--driver-memory 500M \
-	--executor-memory 1g \
-	--executor-cores 2 \
+	--num-executors 16 \
+	--driver-memory 4G \
+	--executor-memory 16g \
+	--executor-cores 8 \
 	--conf spark.default.parallelism=$ETL_STATS_PARTITION \
 	--jars $DEPS \
 	etlman-1.1-SNAPSHOT.jar cluster $SCHEMA_NAME $TABLE_NAME $LOAD_DATE 1>${LOG_FILE} 2>&1

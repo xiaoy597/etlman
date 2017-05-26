@@ -15,13 +15,13 @@ object HiveUtils {
 
   var sqlContext: HiveContext = null
 
-  def getDataFromHive(sqlStmt: String, sc: SparkContext, numPartitions: Int): DataFrame = {
+  def getDataFromHive(sqlStmt: String, sc: SparkContext, numPartitions: Int = 0): DataFrame = {
 
     if (sqlContext == null) {
       sqlContext = new HiveContext(sc)
     }
 
-    val dataFrame = sqlContext.sql(sqlStmt).repartition(numPartitions)
+    val dataFrame = sqlContext.sql(sqlStmt)
 
     if (ZipperConfig.isDebug) {
       println("Sample result of the SQL [%s]:".format(sqlStmt))
@@ -29,7 +29,10 @@ object HiveUtils {
 
     }
 
-    dataFrame
+    if (numPartitions != 0)
+      dataFrame.repartition(numPartitions)
+    else
+      dataFrame
   }
 
   def saveDatatoHive(sc: SparkContext, srcTableName: String, destTableName: String,

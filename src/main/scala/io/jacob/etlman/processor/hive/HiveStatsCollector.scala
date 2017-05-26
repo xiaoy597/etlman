@@ -23,10 +23,12 @@ class HiveStatsCollector(val sparkContext: SparkContext,
   def collect(): Unit = {
     val timeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())
 
+    val defaultParallelism = System.getProperty("spark.default.parallelism").toInt
+
     val queryStmt = "select * from %s.%s %s"
       .format(schemaName, tableName, if (loadDate == null) "" else " where data_dt_iso = '" + loadDate + "'")
 
-    val tableDF = HiveUtils.getDataFromHive(queryStmt, sparkContext, 10)
+    val tableDF = HiveUtils.getDataFromHive(queryStmt, sparkContext, defaultParallelism)
 
     val rowCount = tableDF.count()
     println("Total number of row is : %d".format(rowCount))
