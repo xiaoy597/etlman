@@ -28,7 +28,7 @@ class HiveStatsCollector(val sparkContext: SparkContext,
     val queryStmt = "select * from %s.%s %s"
       .format(schemaName, tableName, if (loadDate == null) "" else " where data_dt_iso = '" + loadDate + "'")
 
-    val tableDF = HiveUtils.getDataFromHive(queryStmt, sparkContext, defaultParallelism)
+    val tableDF = HiveUtils.getDataFromHive(queryStmt, sparkContext, defaultParallelism).cache()
 
     val rowCount = tableDF.count()
     println("Total number of row is : %d".format(rowCount))
