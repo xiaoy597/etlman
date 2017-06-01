@@ -7,6 +7,7 @@ import java.util.Date
 import io.jacob.etlman.utils.HiveUtils
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.catalyst.expressions.NaNvl
 import org.apache.spark.sql.functions._
 
 /**
@@ -30,34 +31,55 @@ class HiveStatsCollector(val sparkContext: SparkContext,
 
     val tableDF = HiveUtils.getDataFromHive(queryStmt, sparkContext, defaultParallelism).cache()
 
-    val rowCount = tableDF.count()
-    println("Total number of row is : %d".format(rowCount))
+    //    val rowCount = tableDF.count()
+    //    println("Total number of row is : %d".format(rowCount))
+    //
+    //    saveTableStats(rowCount, timeStamp)
 
-    saveTableStats(rowCount, timeStamp)
+    var rowCount: Long = 0
 
     tableDF.schema.fields.filter(!_.name.equalsIgnoreCase("data_dt_iso")).foreach(c => {
       println("Collecting stats for %s ...".format(c.name))
 
-      val aggDF = tableDF.agg(count(c.name), min(c.name), max(c.name))
+      val stats = tableDF.groupBy(c.name).count().cache()
+      println(stats.schema)
+
+      val numNullDF = stats.where(stats.col(c.name).isNull)
+      val numNull = {
+        if (numNullDF.count() == 1)
+          numNullDF.head().getLong(1)
+        else
+          0
+      }
+
+      println("Number of null is %d".format(numNull))
+
+      val numValue = stats.count()
+      println("The total number of values is : %d".format(numValue))
+
+      val aggDF = stats.agg(sum("count"), min(c.name), max(c.name))
       println(aggDF.schema)
 
-      val colRowCount = aggDF.head().getLong(0)
-      val minVal = aggDF.head().get(1)
-      val maxVal = aggDF.head().get(2)
+      val aggRow = aggDF.head()
+
+      val colRowCount = {
+        if (!aggRow.isNullAt(0)) aggRow.getLong(0) else 0
+      }
+
+      val minVal = {
+        if (!aggRow.isNullAt(1)) aggRow.get(1) else null
+      }
+
+      val maxVal = {
+        if (!aggRow.isNullAt(2)) aggRow.get(2) else null
+      }
 
       println("The row number is %d, min value is %s, the max value is %s".format(
         colRowCount,
         if (minVal != null) minVal.toString else "null",
         if (maxVal != null) maxVal.toString else "null"))
 
-      val numNull = tableDF.where(tableDF.col(c.name).isNull).count()
-      println("Number of null is %s".format(numNull))
-
-      val stats = tableDF.where(c.name + " is not null").groupBy(c.name).count()
-      println(stats.schema)
-
-      val numValue = stats.count()
-      println("The total number of values is : %d".format(numValue))
+      rowCount = colRowCount
 
       println("The top 200 number of values are:")
 
@@ -66,6 +88,9 @@ class HiveStatsCollector(val sparkContext: SparkContext,
         if (maxVal != null) maxVal.toString else "null",
         numValue, numNull, stats)
     })
+
+    saveTableStats(rowCount, timeStamp)
+
   }
 
   def saveTableStats(rowCount: Long, timeStamp: String): Unit = {
@@ -100,7 +125,7 @@ class HiveStatsCollector(val sparkContext: SparkContext,
 
     stats.sort(desc("count")).take(200).foreach(x => {
       println(x)
-      ps.setString(1, x.get(0).toString)
+      ps.setString(1, if (x.get(0) == null) "null" else x.get(0).toString)
       ps.setLong(2, x.getLong(1))
       ps.executeUpdate()
     })

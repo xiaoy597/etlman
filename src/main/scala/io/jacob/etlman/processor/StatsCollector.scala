@@ -36,7 +36,7 @@ object StatsCollector {
     val sparkContext = new SparkContext(sparkConf)
 
     if (tableName == null || tableName == "-") {
-      val tableList = HiveUtils.getDataFromHive("show tables in sdata", sparkContext).collect()
+      val tableList = HiveUtils.getDataFromHive("show tables in " + schemaName, sparkContext).collect()
 
       tableList.foreach(t => {
         new HiveStatsCollector(sparkContext, "src_sys", schemaName, t.getString(0), loadDate, metaDBConnection).collect()

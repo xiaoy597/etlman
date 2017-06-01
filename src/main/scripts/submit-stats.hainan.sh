@@ -10,7 +10,7 @@ export ETL_METADB_USER=USER
 export ETL_METADB_PASSWORD=PASSWORD
 
 export ETL_STATS_DEBUG=true
-export ETL_STATS_PARTITION=1024
+export ETL_STATS_PARTITION=64
 
 DEPS="\
 ./lib/akka-actor_2.10-2.3.11.jar,\
@@ -183,7 +183,7 @@ spark-submit \
 	--num-executors 16 \
 	--driver-memory 4G \
 	--executor-memory 16g \
-	--executor-cores 8 \
+	--executor-cores 4 \
 	--conf spark.default.parallelism=$ETL_STATS_PARTITION \
 	--jars $DEPS \
 	etlman-1.1-SNAPSHOT.jar cluster $SCHEMA_NAME $TABLE_NAME $LOAD_DATE 1>${LOG_FILE} 2>&1
