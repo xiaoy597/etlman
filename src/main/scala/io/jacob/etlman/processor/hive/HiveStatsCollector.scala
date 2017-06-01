@@ -7,7 +7,6 @@ import java.util.Date
 import io.jacob.etlman.utils.HiveUtils
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.catalyst.expressions.NaNvl
 import org.apache.spark.sql.functions._
 
 /**
