@@ -28,7 +28,15 @@ class HiveStatsCollector(val sparkContext: SparkContext,
     val queryStmt = "select * from %s.%s %s"
       .format(schemaName, tableName, if (loadDate == null) "" else " where data_dt_iso = '" + loadDate + "'")
 
-    val tableDF = HiveUtils.getDataFromHive(queryStmt, sparkContext, defaultParallelism).cache()
+    val tableDF = try {
+      HiveUtils.getDataFromHive(queryStmt, sparkContext, defaultParallelism).cache()
+    } catch {
+      case e: Exception =>
+        println("Exception captured during executing [%s]".format(queryStmt))
+        println("Stats collection for %s is aborted.".format(tableName))
+        e.printStackTrace()
+        return
+    }
 
     //    val rowCount = tableDF.count()
     //    println("Total number of row is : %d".format(rowCount))
@@ -124,7 +132,25 @@ class HiveStatsCollector(val sparkContext: SparkContext,
 
     stats.sort(desc("count")).take(200).foreach(x => {
       println(x)
-      ps.setString(1, if (x.get(0) == null) "null" else x.get(0).toString)
+      ps.setString(1, {
+        // Replace the leading and trailing spaces with 'Space(X)'
+        val colVal = if (x.get(0) == null) "null" else x.get(0).toString
+        val (preSpaceCount, postSpaceCount, _) = colVal.foldLeft((0, 0, false))((t, c) =>
+          if (!t._3) {
+            if (c == ' ') (t._1 + 1, 0, false)
+            else (t._1, 0, true)
+          } else {
+            if (c == ' ') (t._1, t._2 + 1, true)
+            else (t._1, 0, true)
+          }
+        )
+
+        (if (preSpaceCount != 0) "Space(" + preSpaceCount + ")" else "") +
+          colVal.trim +
+          (if (postSpaceCount != 0) "Space(" + postSpaceCount + ")" else "")
+
+      })
+
       ps.setLong(2, x.getLong(1))
       ps.executeUpdate()
     })
