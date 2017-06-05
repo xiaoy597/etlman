@@ -38,11 +38,6 @@ class HiveStatsCollector(val sparkContext: SparkContext,
         return
     }
 
-    //    val rowCount = tableDF.count()
-    //    println("Total number of row is : %d".format(rowCount))
-    //
-    //    saveTableStats(rowCount, timeStamp)
-
     var rowCount: Long = 0
 
     tableDF.schema.fields.filter(!_.name.equalsIgnoreCase("data_dt_iso")).foreach(c => {
@@ -145,9 +140,16 @@ class HiveStatsCollector(val sparkContext: SparkContext,
           }
         )
 
-        (if (preSpaceCount != 0) "Space(" + preSpaceCount + ")" else "") +
-          colVal.trim +
-          (if (postSpaceCount != 0) "Space(" + postSpaceCount + ")" else "")
+        val trimedVal = (if (preSpaceCount != 0) "Space(" + preSpaceCount + ")" else "") +
+                        colVal.trim +
+                        (if (postSpaceCount != 0) "Space(" + postSpaceCount + ")" else "")
+
+        // The length of the value to be inserted into col_value_histogram.model_value
+        // shouldn't exceed the maximum column length of 128.
+        if (trimedVal.length > 128)
+          trimedVal.substring(0, 125) + "..."
+        else
+          trimedVal
 
       })
 
