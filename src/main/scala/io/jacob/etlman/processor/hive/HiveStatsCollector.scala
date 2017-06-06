@@ -9,6 +9,8 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
+import scala.collection.mutable
+
 /**
   * Created by xiaoy on 2017/5/15.
   */
@@ -86,8 +88,8 @@ class HiveStatsCollector(val sparkContext: SparkContext,
       println("The top 200 number of values are:")
 
       saveColumnStats(c.name, timeStamp,
-        if (minVal != null) minVal.toString else "null",
-        if (maxVal != null) maxVal.toString else "null",
+        if (minVal != null) normalizeValue(minVal.toString, null) else "null",
+        if (maxVal != null) normalizeValue(maxVal.toString, null) else "null",
         numValue, numNull, stats)
     })
 
@@ -125,36 +127,52 @@ class HiveStatsCollector(val sparkContext: SparkContext,
     val sqlInsertHistogram = "insert into col_value_histogram values ('%s', ?, ?)".format(histogramId)
     ps = metaDBConnection.prepareStatement(sqlInsertHistogram)
 
+    val vals = new mutable.HashMap[String, Int]
     stats.sort(desc("count")).take(200).foreach(x => {
       println(x)
-      ps.setString(1, {
-        // Replace the leading and trailing spaces with 'Space(X)'
-        val colVal = if (x.get(0) == null) "null" else x.get(0).toString
-        val (preSpaceCount, postSpaceCount, _) = colVal.foldLeft((0, 0, false))((t, c) =>
-          if (!t._3) {
-            if (c == ' ') (t._1 + 1, 0, false)
-            else (t._1, 0, true)
-          } else {
-            if (c == ' ') (t._1, t._2 + 1, true)
-            else (t._1, 0, true)
-          }
-        )
-
-        val trimedVal = (if (preSpaceCount != 0) "Space(" + preSpaceCount + ")" else "") +
-                        colVal.trim +
-                        (if (postSpaceCount != 0) "Space(" + postSpaceCount + ")" else "")
-
-        // The length of the value to be inserted into col_value_histogram.model_value
-        // shouldn't exceed the maximum column length of 128.
-        if (trimedVal.length > 128)
-          trimedVal.substring(0, 125) + "..."
-        else
-          trimedVal
-
-      })
-
+      ps.setString(1, if (x.get(0) == null) "null" else normalizeValue(x.get(0).toString, vals))
       ps.setLong(2, x.getLong(1))
       ps.executeUpdate()
     })
+  }
+
+  private def normalizeValue(colVal: String, vals: mutable.Map[String, Int]): String = {
+    // Replace the leading and trailing spaces with 'Space(X)'
+    val (preSpaceCount, postSpaceCount, _) = colVal.foldLeft((0, 0, false))((t, c) =>
+      if (!t._3) {
+        if (c == ' ') (t._1 + 1, 0, false)
+        else (t._1, 0, true)
+      } else {
+        if (c == ' ') (t._1, t._2 + 1, true)
+        else (t._1, 0, true)
+      }
+    )
+
+    val trimedVal = (if (preSpaceCount != 0) "Space(" + preSpaceCount + ")" else "") +
+      colVal.trim +
+      (if (postSpaceCount != 0) "Space(" + postSpaceCount + ")" else "")
+
+    // The length of the value to be inserted into col_value_histogram.model_value
+    // shouldn't exceed the maximum column length of 128.
+    val normVal = if (trimedVal.length > 128)
+      trimedVal.substring(0, 120) + "..."
+    else
+      trimedVal
+
+    if (vals != null){
+      getDistinctVal(vals, normVal, 0)
+    }else
+      normVal
+  }
+
+  def getDistinctVal(values: mutable.Map[String, Int], value : String, idx : Int):String = {
+    if (values.contains(value))
+      getDistinctVal(values,
+        value.substring(0, 120) + "...(" + idx + ")",
+        idx + 1)
+    else{
+      values(value) = 1
+      value
+    }
   }
 }
