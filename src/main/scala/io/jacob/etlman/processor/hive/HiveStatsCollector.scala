@@ -80,16 +80,16 @@ class HiveStatsCollector(val sparkContext: SparkContext,
 
       println("The row number is %d, min value is %s, the max value is %s".format(
         colRowCount,
-        if (minVal != null) minVal.toString else "null",
-        if (maxVal != null) maxVal.toString else "null"))
+        if (minVal != null) minVal.toString else "(null)",
+        if (maxVal != null) maxVal.toString else "(null)"))
 
       rowCount = colRowCount
 
       println("The top 200 number of values are:")
 
       saveColumnStats(c.name, timeStamp,
-        if (minVal != null) normalizeValue(minVal.toString, null) else "null",
-        if (maxVal != null) normalizeValue(maxVal.toString, null) else "null",
+        if (minVal != null) normalizeValue(minVal.toString, null) else "(null)",
+        if (maxVal != null) normalizeValue(maxVal.toString, null) else "(null)",
         numValue, numNull, stats)
     })
 
@@ -130,7 +130,7 @@ class HiveStatsCollector(val sparkContext: SparkContext,
     val vals = new mutable.HashMap[String, Int]
     stats.sort(desc("count")).take(200).foreach(x => {
       println(x)
-      ps.setString(1, if (x.get(0) == null) "null" else normalizeValue(x.get(0).toString, vals))
+      ps.setString(1, if (x.get(0) == null) "(null)" else normalizeValue(x.get(0).toString, vals))
       ps.setLong(2, x.getLong(1))
       ps.executeUpdate()
     })
