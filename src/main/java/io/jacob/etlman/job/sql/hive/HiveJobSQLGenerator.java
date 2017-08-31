@@ -215,6 +215,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
                 groupIdx++;
             }
 
+            // Filter conditions for different groups of this batch are separated by ';'.
             String[] filterConditions = sourceTable.getFilterCondition().split(";");
             if (groupIdx > filterConditions.length - 1)
                 groupIdx = filterConditions.length - 1;
@@ -350,6 +351,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         for (ETLLoadBatch etlLoadBatch : etlTask.getEtlEntity().getEtlLoadBatches())
             if (etlLoadBatch.getLoadBatch() == loadBatch) {
                 sourceTables = etlLoadBatch.getSourceTableList();
+                sourceTables.addAll(etlTask.getEtlEntity().getCommonSourceTables());
                 break;
             }
 
