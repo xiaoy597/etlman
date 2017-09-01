@@ -152,6 +152,10 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
             }
 
             if (mapping.getExpression().trim().length() == 0) {
+                // Why can't we just use the source system, source schema and source table in the mapping object
+                // to produce qualified column name?
+                // Because we need to use table alias or interface table name to qualify column name instead of
+                // the connected source system, source schema and source table name.
                 buffer.append(getQualifiedColumnName(loadGroup.getLoadBatch().getLoadBatch(),
                         mapping.getSrcColumnList().get(0)));
             } else
