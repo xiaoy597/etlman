@@ -31,7 +31,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
 
         buffer.append("\nUSE ").append(etlTask.getEtlEntity().getSchemaName()).append(";");
 
-        if (hasIncSourceData && etlTask.getEtlEntity().getLoadMode().equals("更新")) {
+        if (etlTask.getEtlEntity().getLoadMode().equals("更新")) {
             workingTable = etlTask.getEtlEntity().getPhyTableName() + "_" + JobSQLGeneratorConfig.workDateVarName;
             buffer.append("\nDROP TABLE IF EXISTS ").append(workingTable).append(";");
             buffer.append("\nCREATE TABLE ").append(workingTable).append(" LIKE ").append(etlTask.getEtlEntity().getPhyTableName()).append(";");
@@ -48,7 +48,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
     protected String genJobPostprocess() {
         StringBuilder buffer = new StringBuilder();
 
-        if (!(hasIncSourceData && etlTask.getEtlEntity().getLoadMode().equals("更新"))) {
+        if (! etlTask.getEtlEntity().getLoadMode().equals("更新")) {
             return "";
         }
 
