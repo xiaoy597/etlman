@@ -16,6 +16,7 @@ public class ETLLoadBatch {
     private List<ETLSourceTable> sourceTableList = new ArrayList<ETLSourceTable>();
     private List<ETLLoadGroup> loadGroupList = new ArrayList<ETLLoadGroup>();
     private ETLEntity entity;
+    private String batchScript;
 
     public List<ETLLoadGroup> getLoadGroupList() {
         return loadGroupList;
@@ -39,6 +40,14 @@ public class ETLLoadBatch {
 
     public void setSourceTableList(List<ETLSourceTable> sourceTableList) {
         this.sourceTableList = sourceTableList;
+    }
+
+    public String getBatchScript() {
+        return batchScript;
+    }
+
+    public void setBatchScript(String batchScript) {
+        this.batchScript = batchScript;
     }
 
     public void initialize(ETLEntity entity) throws Exception {

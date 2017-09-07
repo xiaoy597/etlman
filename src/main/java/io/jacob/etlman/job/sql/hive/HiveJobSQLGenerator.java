@@ -8,9 +8,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import static java.lang.System.exit;
+import static java.lang.System.load;
 
 /**
  * Created by xiaoy on 1/5/2017.
@@ -27,9 +29,70 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
 
     @Override
     protected String genJobPreprocess() {
+
+        // For batch level script, not job level pre-process script is needed.
+        if (etlTask.getEtlEntity().isSingleSource())
+            return "";
+
         StringBuilder buffer = new StringBuilder();
 
         buffer.append("\nUSE ").append(etlTask.getEtlEntity().getSchemaName()).append(";");
+
+        buffer.append(genWorkingTable());
+
+//        buffer.append("\nALTER TABLE ").append(workingTable).append(
+//                String.format(" DROP IF EXISTS PARTITION (%s = '%s');", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
+
+        preProcessScript = buffer.toString();
+        return preProcessScript;
+    }
+
+    @Override
+    protected String genJobPostprocess() {
+        // For batch level script, not job level post-process script is needed.
+        if (etlTask.getEtlEntity().isSingleSource())
+            return "";
+
+        if (! etlTask.getEtlEntity().getLoadMode().equals("更新")) {
+            return "";
+        }
+
+        postProcessScript =  genDataMerge();
+        return postProcessScript;
+    }
+
+    @Override
+    protected String genBatchPreprocess(ETLLoadBatch loadBatch) throws Exception {
+
+        if (!etlTask.getEtlEntity().isSingleSource())
+            return "";
+
+        StringBuilder buffer = new StringBuilder();
+
+        buffer.append("\nUSE ").append(etlTask.getEtlEntity().getSchemaName()).append(";");
+
+        buffer.append(genWorkingTable());
+
+        return buffer.toString();
+
+    }
+
+    @Override
+    protected String genBatchPostprocess(ETLLoadBatch loadBatch) throws Exception {
+
+        if (!etlTask.getEtlEntity().isSingleSource())
+            return "";
+
+        if (!etlTask.getEtlEntity().getLoadMode().equals("更新")) {
+            return "";
+        }
+
+        return genDataMerge();
+    }
+
+
+    private String genWorkingTable(){
+        StringBuilder buffer = new StringBuilder();
 
         if (etlTask.getEtlEntity().getLoadMode().equals("更新")) {
             workingTable = etlTask.getEtlEntity().getPhyTableName() + "_" + JobSQLGeneratorConfig.workDateVarName;
@@ -38,19 +101,12 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         } else
             workingTable = etlTask.getEtlEntity().getPhyTableName();
 
-        buffer.append("\nALTER TABLE ").append(workingTable).append(
-                String.format(" DROP IF EXISTS PARTITION (%s = '%s');", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
-
         return buffer.toString();
+
     }
 
-    @Override
-    protected String genJobPostprocess() {
+    private String genDataMerge(){
         StringBuilder buffer = new StringBuilder();
-
-        if (! etlTask.getEtlEntity().getLoadMode().equals("更新")) {
-            return "";
-        }
 
         buffer.append("\nINSERT OVERWRITE TABLE ").append(etlTask.getEtlEntity().getPhyTableName());
         buffer.append(String.format("\nPARTITION (%s = '%s'", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
@@ -96,7 +152,9 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         buffer.append("\nDROP TABLE IF EXISTS ").append(workingTable).append(";");
 
         return buffer.toString();
+
     }
+
 
     @Override
     protected String genBatchBody(ETLLoadBatch loadBatch) throws Exception {
@@ -122,7 +180,11 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
     protected String genGroupBody(ETLLoadGroup loadGroup) throws Exception {
         StringBuilder buffer = new StringBuilder();
 
-        buffer.append("\nINSERT INTO TABLE ").append(workingTable);
+        if (getPartitionKeys().size() == 0 && !etlTask.getEtlEntity().isSingleSource() && loadGroup.getLoadBatch().getLoadBatch() > 1)
+            buffer.append("\nINSERT INTO TABLE ").append(workingTable);
+        else
+            buffer.append("\nINSERT OVERWRITE TABLE ").append(workingTable);
+
         buffer.append(String.format("\nPARTITION (%s = '%s'", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
         for (ETLEntityAttribute partKey : getPartitionKeys())
             buffer.append(", ").append(partKey.getPhyName());
@@ -293,9 +355,22 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         List<ETLEntityAttribute> partitionKeys = new ArrayList<ETLEntityAttribute>();
 
         for (ETLEntityAttribute attribute : etlTask.getEtlEntity().getEtlEntityAttributes()) {
-            if (attribute.isPartitionKey())
+            if (attribute.getPartitionKey() != 0)
                 partitionKeys.add(attribute);
         }
+
+        Collections.sort(partitionKeys, new Comparator<ETLEntityAttribute>(){
+
+            @Override
+            public int compare(ETLEntityAttribute o1, ETLEntityAttribute o2) {
+                if (o1.getPartitionKey() < o2.getPartitionKey())
+                    return -1;
+                else if (o1.getPartitionKey() > o2.getPartitionKey())
+                    return 1;
+                else
+                    return 0;
+            }
+        });
 
         return partitionKeys;
     }
@@ -304,7 +379,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         List<ETLEntityAttribute> nonPartitionKeys = new ArrayList<ETLEntityAttribute>();
 
         for (ETLEntityAttribute attribute : etlTask.getEtlEntity().getEtlEntityAttributes()) {
-            if (!attribute.isPartitionKey())
+            if (attribute.getPartitionKey() == 0)
                 nonPartitionKeys.add(attribute);
         }
 

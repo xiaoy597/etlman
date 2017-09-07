@@ -15,7 +15,7 @@ public class ETLEntityAttribute {
     private String aggPeriod;
     private boolean isPK;
     private boolean chainCompare;
-    private boolean isPartitionKey;
+    private int isPartitionKey;
     private String comments;
 
     public String toString(){
@@ -63,11 +63,11 @@ public class ETLEntityAttribute {
         this.chainCompare = chainCompare;
     }
 
-    public boolean isPartitionKey() {
+    public int getPartitionKey() {
         return isPartitionKey;
     }
 
-    public void setPartitionKey(boolean partitionKey) {
+    public void setPartitionKey(int partitionKey) {
         isPartitionKey = partitionKey;
     }
 

@@ -5,6 +5,9 @@ import io.jacob.etlman.metastore.ETLLoadGroup;
 import io.jacob.etlman.metastore.ETLSourceTable;
 import io.jacob.etlman.metastore.ETLTask;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Created by xiaoy on 1/5/2017.
  */
@@ -12,6 +15,8 @@ public abstract class JobSQLGenerator {
 
     protected boolean hasIncSourceData;
     protected ETLTask etlTask;
+    protected String preProcessScript = null;
+    protected String postProcessScript = null;
 
     public JobSQLGenerator(ETLTask etlTask) {
         this.etlTask = etlTask;
@@ -60,7 +65,9 @@ public abstract class JobSQLGenerator {
     }
 
     protected String genBatchScript(ETLLoadBatch loadBatch) throws Exception {
-        return genBatchPreprocess(loadBatch) + genBatchBody(loadBatch) + genBatchPostprocess(loadBatch);
+        loadBatch.setBatchScript(genBatchPreprocess(loadBatch) +
+                genBatchBody(loadBatch) + genBatchPostprocess(loadBatch));
+        return loadBatch.getBatchScript();
     }
 
     protected String genJobBody() throws Exception {
@@ -71,8 +78,19 @@ public abstract class JobSQLGenerator {
         return buffer.toString();
     }
 
-    public String genJobScript() throws Exception {
-        return genJobPreprocess() + genJobBody() + genJobPostprocess();
+    public Map<String, String> genJobScript() throws Exception {
+        Map<String, String> scripts = new HashMap<String, String>();
+
+        if (!etlTask.getEtlEntity().isSingleSource())
+            scripts.put(etlTask.getTaskName() + ".sql",
+                    genJobPreprocess() + genJobBody() + genJobPostprocess());
+        else{
+            for (ETLLoadBatch loadBatch : etlTask.getEtlEntity().getEtlLoadBatches())
+                scripts.put(etlTask.getTaskName() + "_" + String.valueOf(loadBatch.getLoadBatch()) + ".sql",
+                        genBatchScript(loadBatch));
+        }
+
+        return scripts;
     }
 
     private boolean hasIncrementalSource() {

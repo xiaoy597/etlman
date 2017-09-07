@@ -5,6 +5,7 @@ import io.jacob.etlman.job.sql.hive.HiveJobSQLGenerator;
 import io.jacob.etlman.metastore.ETLEntity;
 import io.jacob.etlman.metastore.ETLTask;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -61,7 +63,7 @@ public class ETLMan {
     public static void main(String[] args) {
 
         String entityName = args[0];
-        String outputFile = args[1];
+        String outputDir = args[1];
 
         Properties metaDBConnParameters = new Properties();
 
@@ -79,11 +81,15 @@ public class ETLMan {
                 if (task.getEtlEntity().getEntityName().equals(entityName)) {
                     JobSQLGenerator sqlGenerator = new HiveJobSQLGenerator(task);
 
-                    FileWriter fileWriter = new FileWriter(outputFile);
+                    Map<String, String> scripts = sqlGenerator.genJobScript();
 
-                    fileWriter.write(sqlGenerator.genJobScript());
+                    for (String scriptFile : scripts.keySet()) {
+                        FileWriter fileWriter = new FileWriter(outputDir + File.separator + scriptFile);
 
-                    fileWriter.close();
+                        fileWriter.write(scripts.get(scriptFile));
+
+                        fileWriter.close();
+                    }
 
 //                    System.out.println(sqlGenerator.genJobScript());
                 }

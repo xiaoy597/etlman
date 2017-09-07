@@ -20,6 +20,7 @@ public class ETLEntity {
     private boolean keepLoadDate;
     private boolean doAggregate;
     private boolean isFactTable;
+    private boolean isSingleSource;
     private String subjectName;
     private String comments;
 
@@ -149,6 +150,14 @@ public class ETLEntity {
         this.subjectName = subjectName;
     }
 
+    public boolean isSingleSource() {
+        return isSingleSource;
+    }
+
+    public void setSingleSource(boolean singleSource) {
+        isSingleSource = singleSource;
+    }
+
     public String getComments() {
         return comments;
     }
@@ -177,6 +186,7 @@ public class ETLEntity {
             keepLoadDate = rs.getBoolean("keep_load_dt");
             doAggregate = rs.getBoolean("do_aggregate");
             isFactTable = rs.getBoolean("is_fact");
+            isSingleSource = rs.getBoolean("is_single_source");
             subjectName = rs.getString("subject_name");
             comments = rs.getString("comments");
 
@@ -201,7 +211,7 @@ public class ETLEntity {
             entityAttribute.setChainCompare(rs.getBoolean("chain_compare"));
             entityAttribute.setColumnId(rs.getInt("column_id"));
             entityAttribute.setDataType(rs.getString("data_type"));
-            entityAttribute.setPartitionKey(rs.getBoolean("is_partition_key"));
+            entityAttribute.setPartitionKey(rs.getInt("is_partition_key"));
             entityAttribute.setPK(rs.getBoolean("is_pk"));
 
             etlEntityAttributes.add(entityAttribute);
