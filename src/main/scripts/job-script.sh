@@ -8,8 +8,8 @@ if [ -z "$TABLE_NAME" -o -z "$OUTPUT_FILE" ]; then
 	exit 1
 fi
 
-export ETL_METADB_SERVER=192.168.112.128:3306
-export ETL_METADB_DBNAME=etl_metadata1
+export ETL_METADB_SERVER=127.0.0.1:3306
+export ETL_METADB_DBNAME=etl_metadata_cmb_1
 export ETL_METADB_USER=root
 export ETL_METADB_PASSWORD=root
 
@@ -177,7 +177,7 @@ LOG_FILE=job-script_${CURR_TIME}.log
 echo "Please wait ..."
 echo
 
-java -classpath "./etlman-1.0-SNAPSHOT.jar:$DEPS" io.jacob.etlman.ETLMan $TABLE_NAME $OUTPUT_FILE 1>${LOG_FILE} 2>&1
+java -classpath "./etlman-1.1-SNAPSHOT.jar:$DEPS" io.jacob.etlman.ETLMan $TABLE_NAME $OUTPUT_FILE 1>${LOG_FILE} 2>&1
 
 
 cat ${LOG_FILE}|grep -i '\(error\|except\)'

@@ -172,7 +172,11 @@ DEPS="\
 
 
 CURR_TIME=`date +%Y%m%d%H%M`
-LOG_FILE=stats_${CURR_TIME}.log
+if [ "$TABLE_NAME" = "-" ]; then
+        LOG_FILE=stats_${SCHEMA_NAME}_${CURR_TIME}.log
+else
+        LOG_FILE=stats_${SCHEMA_NAME}_${TABLE_NAME}_${CURR_TIME}.log
+fi
 
 echo "Please wait ..."
 echo
