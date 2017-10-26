@@ -21,6 +21,10 @@ CREATE TABLE column_stats
 	min_value            VARCHAR(128) NULL COMMENT '最小值',
 	value_count          INTEGER NULL COMMENT '唯一值数目',
 	null_count           INTEGER NULL COMMENT '空值数目',
+	data_type			 VARCHAR(32) NULL COMMENT '数据类型',
+	middle_value		 VARCHAR(128) NULL COMMENT '中间值',
+	max_length			 INTEGER NULL COMMENT '数据长度',
+	data_variance		 VARCHAR(128) NULL COMMENT '数据方差',
 	value_histogram_id   VARCHAR(128) NULL COMMENT '值域分布ID'
 ) COMMENT '字段统计信息表';
 
