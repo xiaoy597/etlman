@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static java.lang.System.exit;
+
 /**
  * Created by xiaoy on 2017/4/19.
  */
@@ -28,7 +30,14 @@ public class DQCheckRunner {
         String dqcDBUser = System.getenv("DQC_DB_USER");
         String dqcDBPassword = System.getenv("DQC_DB_PASSWORD");
 
+        if (dqcDBServer == null || dqcDBPort == null || dqcDBUser == null || dqcDBPassword == null){
+            System.out.println("Environment variable is not set correctly.");
+            exit(-1);
+        }
+
         Class.forName("com.mysql.jdbc.Driver");
+
+        System.out.println("Connecting to database ...");
         dqcDBConn = DriverManager.getConnection("jdbc:mysql://" + dqcDBServer + ":" + dqcDBPort + "/" + dqcDBName, dqcDBUser, dqcDBPassword);
     }
 
