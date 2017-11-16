@@ -95,7 +95,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         StringBuilder buffer = new StringBuilder();
 
         if (etlTask.getEtlEntity().getLoadMode().equals("更新")) {
-            workingTable = etlTask.getEtlEntity().getPhyTableName() + "_" + JobSQLGeneratorConfig.workDateVarName;
+            workingTable = etlTask.getEtlEntity().getPhyTableName() + "_" + JobSQLGeneratorConfig.workDate8VarName;
             buffer.append("\nDROP TABLE IF EXISTS ").append(workingTable).append(";");
             buffer.append("\nCREATE TABLE ").append(workingTable).append(" LIKE ").append(etlTask.getEtlEntity().getPhyTableName()).append(";");
         } else

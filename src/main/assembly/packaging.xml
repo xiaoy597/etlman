@@ -47,6 +47,7 @@
                 <include>*.bat</include>
                 <include>*.sh</include>
                 <include>*.sql</include>
+                <include>*.properties</include>
             </includes>
         </fileSet>
 

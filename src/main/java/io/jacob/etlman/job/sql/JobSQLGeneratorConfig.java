@@ -6,5 +6,6 @@ package io.jacob.etlman.job.sql;
 public class JobSQLGeneratorConfig {
     public final static String loadDateColName = "data_dt";
     public final static String workDateVarName = "${DATA_DT}";
+    public final static String workDate8VarName = "${DATA_DT_8}";
     public final static String lastWorkDateVarName = "${LAST_DATA_DT}";
 }
