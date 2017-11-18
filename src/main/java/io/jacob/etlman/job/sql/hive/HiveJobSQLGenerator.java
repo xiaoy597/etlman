@@ -6,13 +6,9 @@ import io.jacob.etlman.metastore.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 import static java.lang.System.exit;
-import static java.lang.System.load;
 
 /**
  * Created by xiaoy on 1/5/2017.
@@ -38,7 +34,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
 
         buffer.append("\nUSE ").append(etlTask.getEtlEntity().getSchemaName()).append(";");
 
-        buffer.append(genWorkingTable());
+        buffer.append(genCreateWorkingTable(0));
 
 //        buffer.append("\nALTER TABLE ").append(workingTable).append(
 //                String.format(" DROP IF EXISTS PARTITION (%s = '%s');", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
@@ -49,29 +45,23 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
 
     @Override
     protected String genJobPostprocess() {
-        // For batch level script, not job level post-process script is needed.
-        if (etlTask.getEtlEntity().isSingleSource())
-            return "";
 
-        if (! etlTask.getEtlEntity().getLoadMode().equals("更新")) {
+        if (!etlTask.getEtlEntity().getLoadMode().equals("更新")) {
             return "";
-        }
-
-        postProcessScript =  genDataMerge();
+        } else
+            postProcessScript = genDataMerge(0);
         return postProcessScript;
     }
 
     @Override
     protected String genBatchPreprocess(ETLLoadBatch loadBatch) throws Exception {
 
-        if (!etlTask.getEtlEntity().isSingleSource())
-            return "";
-
         StringBuilder buffer = new StringBuilder();
 
+        buffer.append("\n-- Script for batch ").append(loadBatch.getLoadBatch()).append(" begins ...");
         buffer.append("\nUSE ").append(etlTask.getEtlEntity().getSchemaName()).append(";");
 
-        buffer.append(genWorkingTable());
+        buffer.append(genCreateWorkingTable(loadBatch.getLoadBatch()));
 
         return buffer.toString();
 
@@ -80,36 +70,94 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
     @Override
     protected String genBatchPostprocess(ETLLoadBatch loadBatch) throws Exception {
 
-        if (!etlTask.getEtlEntity().isSingleSource())
-            return "";
+        StringBuilder buffer = new StringBuilder();
 
-        if (!etlTask.getEtlEntity().getLoadMode().equals("更新")) {
-            return "";
-        }
+        if (etlTask.getEtlEntity().getLoadMode().equals("更新"))
+            buffer.append(genDataMerge(loadBatch.getLoadBatch()));
+        else
+            buffer.append(genDataAppend(loadBatch.getLoadBatch()));
 
-        return genDataMerge();
+        buffer.append(genDropWorkingTable(loadBatch.getLoadBatch()));
+
+        buffer.append("\n-- Script for batch ").append(loadBatch.getLoadBatch()).append(" ends.");
+
+        return buffer.toString();
     }
 
 
-    private String genWorkingTable(){
+    private String genCreateWorkingTable(int batchNo) {
         StringBuilder buffer = new StringBuilder();
 
-        if (etlTask.getEtlEntity().getLoadMode().equals("更新")) {
-            workingTable = etlTask.getEtlEntity().getPhyTableName() + "_" + JobSQLGeneratorConfig.workDate8VarName;
-            buffer.append("\nDROP TABLE IF EXISTS ").append(workingTable).append(";");
-            buffer.append("\nCREATE TABLE ").append(workingTable).append(" LIKE ").append(etlTask.getEtlEntity().getPhyTableName()).append(";");
-        } else
-            workingTable = etlTask.getEtlEntity().getPhyTableName();
+        for (ETLLoadBatch batch : etlTask.getEtlEntity().getEtlLoadBatches()) {
+            if (batch.getLoadBatch() != batchNo && batchNo != 0)
+                continue;
+            for (ETLLoadGroup group : batch.getLoadGroupList()) {
+                workingTable = etlTask.getEtlEntity().getPhyTableName() +
+                        "_" + JobSQLGeneratorConfig.workDate8VarName +
+                        "_" + batch.getLoadBatch() +
+                        "_" + group.getLoadGroup();
+                buffer.append("\nDROP TABLE IF EXISTS ").append(workingTable).append(";");
+                buffer.append("\nCREATE TABLE ")
+                        .append(workingTable)
+                        .append(" LIKE ")
+                        .append(etlTask.getEtlEntity().getPhyTableName())
+                        .append(";");
+                group.setWorkingTable(workingTable);
+            }
+        }
 
         return buffer.toString();
 
     }
 
-    private String genDataMerge(){
+    private String genDropWorkingTable(int batchNo) {
         StringBuilder buffer = new StringBuilder();
 
-        buffer.append("\nINSERT OVERWRITE TABLE ").append(etlTask.getEtlEntity().getPhyTableName());
-        buffer.append(String.format("\nPARTITION (%s = '%s'", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
+        for (ETLLoadBatch batch : etlTask.getEtlEntity().getEtlLoadBatches()) {
+            if (batch.getLoadBatch() != batchNo && batchNo != 0)
+                continue;
+            for (ETLLoadGroup group : batch.getLoadGroupList()) {
+                workingTable = etlTask.getEtlEntity().getPhyTableName() +
+                        "_" + JobSQLGeneratorConfig.workDate8VarName +
+                        "_" + batch.getLoadBatch() +
+                        "_" + group.getLoadGroup();
+                buffer.append("\nDROP TABLE IF EXISTS ").append(workingTable).append(";");
+            }
+        }
+
+        return buffer.toString();
+
+
+    }
+
+    private void appendColumnList(StringBuilder buffer) {
+        for (ETLEntityAttribute partKey : getPartitionKeys())
+            buffer.append(", ").append(partKey.getPhyName());
+        buffer.append(")");
+
+        boolean isFirstColumn = true;
+        buffer.append("\nSELECT ");
+        for (ETLEntityAttribute column : getNonPartitionKeys()) {
+            if (!isFirstColumn)
+                buffer.append("\n, ");
+            else
+                buffer.append("\n");
+
+            buffer.append(column.getPhyName());
+            isFirstColumn = false;
+        }
+
+        for (ETLEntityAttribute column : getPartitionKeys()) {
+            buffer.append("\n, ").append(column.getPhyName());
+        }
+
+    }
+
+    void appendTableUpdate(StringBuilder buffer, List<String> newTables, String oldTable,
+                           String partition, String targetTable) {
+        buffer.append("\nINSERT OVERWRITE TABLE ").append(targetTable);
+        buffer.append(String.format("\nPARTITION (%s = '%s'",
+                JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
 
         for (ETLEntityAttribute partKey : getPartitionKeys())
             buffer.append(", ").append(partKey.getPhyName());
@@ -123,18 +171,40 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
             else
                 buffer.append("\n");
 
-            buffer.append("coalesce(t1.").append(column.getPhyName()).append(", t2.").append(column.getPhyName()).append(")");
+            buffer.append("coalesce(t1.")
+                    .append(column.getPhyName())
+                    .append(", t2.")
+                    .append(column.getPhyName())
+                    .append(")");
             isFirstColumn = false;
         }
 
         for (ETLEntityAttribute column : getPartitionKeys()) {
-            buffer.append("\n, ").append("coalesce(t1.").append(column.getPhyName()).append(", t2.").append(column.getPhyName()).append(")");
+            buffer.append("\n, ")
+                    .append("coalesce(t1.")
+                    .append(column.getPhyName())
+                    .append(", t2.")
+                    .append(column.getPhyName())
+                    .append(")");
         }
 
-        buffer.append("\nFROM ").append(workingTable).append(" t1 FULL OUTER JOIN ");
+        StringBuilder newTableBuf = new StringBuilder();
+        boolean firstTable = true;
+        for (String newTable : newTables) {
+            if (!firstTable)
+                newTableBuf.append(" UNION ALL ");
+            newTableBuf.append("SELECT * FROM " + newTable);
+            firstTable = false;
+        }
 
-        buffer.append("(SELECT * FROM ").append(etlTask.getEtlEntity().getPhyTableName())
-                .append(String.format(" WHERE %s = '%s')", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.lastWorkDateVarName))
+        buffer.append("\nFROM (")
+                .append(newTableBuf.toString())
+                .append(") t1 FULL OUTER JOIN ");
+
+        buffer.append("(SELECT * FROM ")
+                .append(oldTable)
+                .append(String.format(" WHERE %s = '%s')",
+                        JobSQLGeneratorConfig.loadDateColName, partition))
                 .append(" t2");
 
         buffer.append("\nON");
@@ -143,18 +213,76 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         for (ETLEntityAttribute column : getPrimaryKeys()) {
             if (!isFirstColumn)
                 buffer.append(" AND");
-            buffer.append(" t1.").append(column.getPhyName()).append(" =").append(" t2.").append(column.getPhyName());
+            buffer.append(" t1.")
+                    .append(column.getPhyName())
+                    .append(" =")
+                    .append(" t2.")
+                    .append(column.getPhyName());
             isFirstColumn = false;
         }
 
         buffer.append(";");
 
-        buffer.append("\nDROP TABLE IF EXISTS ").append(workingTable).append(";");
+    }
+
+    private String genDataMerge(int batchNo) {
+        StringBuilder buffer = new StringBuilder();
+
+        for (ETLLoadBatch batch : etlTask.getEtlEntity().getEtlLoadBatches()) {
+            if (batchNo != 0 && batch.getLoadBatch() != batchNo)
+                continue;
+
+            List<String> groupWorkingTables = new ArrayList<String>();
+            for (ETLLoadGroup group : batch.getLoadGroupList()) {
+                groupWorkingTables.add(group.getWorkingTable());
+            }
+
+            String mergeTempTable = etlTask.getEtlEntity().getPhyTableName() + "_" + batch.getLoadBatch() + "_merge";
+
+            buffer.append("\nDROP TABLE IF EXISTS ").append(mergeTempTable).append(";");
+            buffer.append("\nCREATE TABLE ")
+                    .append(mergeTempTable)
+                    .append(" LIKE ")
+                    .append(etlTask.getEtlEntity().getPhyTableName())
+                    .append(";");
+
+            // Calculate the new today's snapshot based on batch snapshot and existing today's snapshot.
+            appendTableUpdate(buffer, groupWorkingTables, etlTask.getEtlEntity().getPhyTableName(),
+                    JobSQLGeneratorConfig.workDateVarName, mergeTempTable);
+
+            // Calculate the final today's snapshot based on the new today's snapshot and yestoday's snapshot.
+            appendTableUpdate(buffer, Arrays.asList(mergeTempTable), etlTask.getEtlEntity().getPhyTableName(),
+                    JobSQLGeneratorConfig.lastWorkDateVarName, etlTask.getEtlEntity().getPhyTableName());
+
+            buffer.append("\nDROP TABLE IF EXISTS ").append(mergeTempTable).append(";");
+        }
 
         return buffer.toString();
 
     }
 
+    private String genDataAppend(int batchNo) {
+        StringBuilder buffer = new StringBuilder();
+
+        for (ETLLoadBatch batch : etlTask.getEtlEntity().getEtlLoadBatches()) {
+            if (batchNo != 0 && batch.getLoadBatch() != batchNo)
+                continue;
+
+            for (ETLLoadGroup group : batch.getLoadGroupList()) {
+                buffer.append("\nINSERT INTO TABLE ").append(etlTask.getEtlEntity().getPhyTableName());
+                buffer.append(String.format("\nPARTITION (%s = '%s'", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
+
+                appendColumnList(buffer);
+
+                buffer.append("\nFROM ").append(group.getWorkingTable());
+
+                buffer.append(";");
+            }
+        }
+
+        return buffer.toString();
+
+    }
 
     @Override
     protected String genBatchBody(ETLLoadBatch loadBatch) throws Exception {
@@ -170,7 +298,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
         if (numGroupBlock > 0) {
             buffer.append(buffer4Groups);
             buffer.append("\n;");
-        }else
+        } else
             buffer = buffer4Groups;
 
         return buffer.toString();
@@ -180,10 +308,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
     protected String genGroupBody(ETLLoadGroup loadGroup) throws Exception {
         StringBuilder buffer = new StringBuilder();
 
-        if (getPartitionKeys().size() == 0 && !etlTask.getEtlEntity().isSingleSource() && loadGroup.getLoadBatch().getLoadBatch() > 1)
-            buffer.append("\nINSERT INTO TABLE ").append(workingTable);
-        else
-            buffer.append("\nINSERT OVERWRITE TABLE ").append(workingTable);
+        buffer.append("\nINSERT OVERWRITE TABLE ").append(loadGroup.getWorkingTable());
 
         buffer.append(String.format("\nPARTITION (%s = '%s'", JobSQLGeneratorConfig.loadDateColName, JobSQLGeneratorConfig.workDateVarName));
         for (ETLEntityAttribute partKey : getPartitionKeys())
@@ -198,7 +323,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
             else
                 buffer.append("\n");
             ETLColumnMapping mapping = getMapping(loadGroup, column);
-            if (mapping == null){
+            if (mapping == null) {
                 buffer.delete(0, buffer.length());
                 logger.error("Mapping not found for batch: " + loadGroup.getLoadBatch().getLoadBatch() + ", group: " + loadGroup.getLoadGroup() +
                         ", column: " + column.getColumnName() + " !");
@@ -206,7 +331,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
             }
 
             if ((mapping.getExpression() == null || mapping.getExpression().trim().length() == 0)
-                && mapping.getSrcColumnList().get(0).getColumnName().equals("")){
+                    && mapping.getSrcColumnList().get(0).getColumnName().equals("")) {
                 logger.error(String.format("Entity: %s, batch: %d, group: %d, expression for mapping [%s] <- [%s] is not specified.",
                         etlTask.getEtlEntity().getEntityName(), loadGroup.getLoadBatch().getLoadBatch(), loadGroup.getLoadGroup(),
                         mapping.getEntityAttribute().getColumnName(), mapping.getSrcColumnList().get(0).getColumnName()));
@@ -232,7 +357,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
             ETLColumnMapping mapping = getMapping(loadGroup, column);
 
             if ((mapping.getExpression() == null || mapping.getExpression().trim().length() == 0)
-                    && mapping.getSrcColumnList().get(0).getColumnName().equals("")){
+                    && mapping.getSrcColumnList().get(0).getColumnName().equals("")) {
                 System.out.println(String.format("Entity: %s, Batch: %d, Group: %d, Expression for Mapping [%s] <- [%s] is not specified.",
                         etlTask.getEtlEntity().getEntityName(), loadGroup.getLoadBatch().getLoadBatch(), loadGroup.getLoadGroup(),
                         mapping.getEntityAttribute().getColumnName(), mapping.getSrcColumnList().get(0).getColumnName()));
@@ -359,7 +484,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
                 partitionKeys.add(attribute);
         }
 
-        Collections.sort(partitionKeys, new Comparator<ETLEntityAttribute>(){
+        Collections.sort(partitionKeys, new Comparator<ETLEntityAttribute>() {
 
             @Override
             public int compare(ETLEntityAttribute o1, ETLEntityAttribute o2) {

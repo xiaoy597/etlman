@@ -1,5 +1,8 @@
 package io.jacob.etlman.metastore;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by xiaoy on 1/3/2017.
  */

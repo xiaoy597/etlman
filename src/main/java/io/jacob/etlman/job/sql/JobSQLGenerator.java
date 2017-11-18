@@ -81,10 +81,12 @@ public abstract class JobSQLGenerator {
     public Map<String, String> genJobScript() throws Exception {
         Map<String, String> scripts = new HashMap<String, String>();
 
-        if (!etlTask.getEtlEntity().isSingleSource())
-            scripts.put(etlTask.getTaskName() + ".sql",
-                    genJobPreprocess() + genJobBody() + genJobPostprocess());
-        else{
+        if (!etlTask.getEtlEntity().isSingleSource()) {
+            StringBuilder buffer = new StringBuilder();
+            for (ETLLoadBatch batch : etlTask.getEtlEntity().getEtlLoadBatches())
+                buffer.append(genBatchScript(batch));
+            scripts.put(etlTask.getTaskName() + ".sql", buffer.toString());
+        } else {
             for (ETLLoadBatch loadBatch : etlTask.getEtlEntity().getEtlLoadBatches())
                 scripts.put(etlTask.getTaskName() + "_" + String.valueOf(loadBatch.getLoadBatch()) + ".sql",
                         genBatchScript(loadBatch));
@@ -95,9 +97,9 @@ public abstract class JobSQLGenerator {
 
     private boolean hasIncrementalSource() {
         // If any one of the source tables contains incremental data, a working table is needed.
-        for (ETLLoadBatch loadBatch : etlTask.getEtlEntity().getEtlLoadBatches()){
+        for (ETLLoadBatch loadBatch : etlTask.getEtlEntity().getEtlLoadBatches()) {
             for (ETLSourceTable sourceTable : loadBatch.getSourceTableList())
-                if (sourceTable.isIncExtract()){
+                if (sourceTable.isIncExtract()) {
                     return true;
                 }
         }

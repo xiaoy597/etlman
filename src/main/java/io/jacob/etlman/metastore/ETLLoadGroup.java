@@ -10,6 +10,15 @@ public class ETLLoadGroup {
     private int loadGroup;
     private List<ETLColumnMapping> columnMappings = new ArrayList<ETLColumnMapping>();
     private ETLLoadBatch loadBatch;
+    private String workingTable;
+
+    public String getWorkingTable() {
+        return workingTable;
+    }
+
+    public void setWorkingTable(String workingTable) {
+        this.workingTable = workingTable;
+    }
 
     public ETLLoadBatch getLoadBatch() {
         return loadBatch;
