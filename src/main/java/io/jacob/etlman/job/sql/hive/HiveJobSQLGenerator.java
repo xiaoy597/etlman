@@ -250,7 +250,7 @@ public class HiveJobSQLGenerator extends JobSQLGenerator {
             appendTableUpdate(buffer, groupWorkingTables, etlTask.getEtlEntity().getPhyTableName(),
                     JobSQLGeneratorConfig.workDateVarName, mergeTempTable);
 
-            // Calculate the final today's snapshot based on the new today's snapshot and yestoday's snapshot.
+            // Calculate the final today's snapshot based on the new today's snapshot and last day's snapshot.
             appendTableUpdate(buffer, Arrays.asList(mergeTempTable), etlTask.getEtlEntity().getPhyTableName(),
                     JobSQLGeneratorConfig.lastWorkDateVarName, etlTask.getEtlEntity().getPhyTableName());
 

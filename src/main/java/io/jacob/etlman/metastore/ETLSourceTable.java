@@ -75,7 +75,7 @@ public class ETLSourceTable {
     }
 
     public void setSysName(String sysName) {
-        this.sysName = sysName;
+        this.sysName = (sysName == null) ? "" : sysName;
     }
 
     public String getTableAlias() {
@@ -83,7 +83,7 @@ public class ETLSourceTable {
     }
 
     public void setTableAlias(String tableAlias) {
-        this.tableAlias = tableAlias;
+        this.tableAlias = (tableAlias == null) ? "" : tableAlias;
     }
 
     public int getJoinOrder() {
@@ -107,7 +107,7 @@ public class ETLSourceTable {
     }
 
     public void setJoinCondition(String joinCondition) {
-        this.joinCondition = joinCondition;
+        this.joinCondition = (joinCondition == null) ? "" : joinCondition;
     }
 
     public String getFilterCondition() {
@@ -115,7 +115,7 @@ public class ETLSourceTable {
     }
 
     public void setFilterCondition(String filterCondition) {
-        this.filterCondition = filterCondition;
+        this.filterCondition = (filterCondition == null) ? "" : filterCondition;
     }
 
     public String getComments() {
@@ -123,7 +123,7 @@ public class ETLSourceTable {
     }
 
     public void setComments(String comments) {
-        this.comments = comments;
+        this.comments = (comments == null) ? "" : comments;
     }
 
     public boolean isIncExtract() {
@@ -136,7 +136,7 @@ public class ETLSourceTable {
 
     public static class ETLSourceTableComparator implements Comparator<ETLSourceTable> {
         @Override
-        public int compare(ETLSourceTable t1, ETLSourceTable t2){
+        public int compare(ETLSourceTable t1, ETLSourceTable t2) {
             if (t1.getJoinOrder() < t2.getJoinOrder())
                 return -1;
             else if (t1.getJoinOrder() == t2.getJoinOrder())

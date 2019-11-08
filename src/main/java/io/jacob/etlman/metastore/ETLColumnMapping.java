@@ -59,7 +59,7 @@ public class ETLColumnMapping {
     }
 
     public void setExpression(String expression) {
-        this.expression = expression;
+        this.expression = (expression == null) ? "" : expression;
     }
 
     public String getComments() {
