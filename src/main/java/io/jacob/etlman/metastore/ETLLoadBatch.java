@@ -50,10 +50,8 @@ public class ETLLoadBatch {
         this.batchScript = batchScript;
     }
 
-    public void initialize(ETLEntity entity) throws Exception {
+    public void initialize(ETLEntity entity, Connection connection) throws Exception {
         this.entity = entity;
-
-        Connection connection = ETLMan.getMetaDBConn();
 
         Statement statement = connection.createStatement();
 

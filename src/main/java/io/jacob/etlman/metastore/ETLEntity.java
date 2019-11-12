@@ -1,7 +1,9 @@
 package io.jacob.etlman.metastore;
 
 import io.jacob.etlman.ETLMan;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -12,6 +14,7 @@ import java.util.List;
  * Created by xiaoy on 1/3/2017.
  */
 public class ETLEntity {
+
     private String schemaName;
     private String entityName;
     private String phyTableName;
@@ -169,13 +172,9 @@ public class ETLEntity {
     public ETLEntity(String schemaName, String entityName) throws Exception {
         this.entityName = entityName;
         this.schemaName = schemaName;
-
-        initialize();
     }
 
-    private void initialize() throws Exception {
-        Connection connection = ETLMan.getMetaDBConn();
-
+    public ETLEntity initialize(Connection connection) throws Exception {
         Statement statement = connection.createStatement();
 
         ResultSet rs = statement.executeQuery("select * from dw_table where schema_name = '" + schemaName + "' and table_name = '" + entityName + "'");
@@ -267,6 +266,9 @@ public class ETLEntity {
         rs.close();
 
         for (ETLLoadBatch loadBatch : etlLoadBatches)
-            loadBatch.initialize(this);
+            loadBatch.initialize(this, connection);
+
+        return this;
     }
+
 }

@@ -9,25 +9,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import javax.sql.DataSource;
-
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class ETLManTest {
 
     @Autowired
-    private DataSource dataSource;
-
     private ETLMan etlMan = null;
 
     @Before
     public void init() throws Exception {
-        if (etlMan == null) {
-            ETLMan.setDataSource(dataSource);
-
-            etlMan = new ETLMan();
-            etlMan.initETLTasks();
-        }
+        etlMan.initETLTasks();
     }
 
     @Test
@@ -54,6 +45,13 @@ public class ETLManTest {
 
     }
 
+    @Test
+    public void testJobSQLGenerator_4() throws Exception {
+        String sql = etlMan.getSQLScriptForEntity("法人");
+
+        System.out.println(sql);
+
+    }
 
     @After
     public void cleanup() {
